@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="icon" type="image/png" href="logo.ico">
 </head>
 <body>
   <div class="bg"></div>
@@ -36,13 +37,19 @@
         <p class="hint">Skroluj dole za bukete &#8595;</p>
       </section>
 
-      <!-- 2. Najnovije -->
+      <!-- 2. O plišanim buketima i nega -->
+      <section class="screen guide" id="nega">
+        <div class="gcard"><h2 id="gTitle1"></h2><div id="gAbout"></div></div>
+        <div class="gcard"><h2 id="gTitle2"></h2><ul id="gCare"></ul></div>
+      </section>
+
+      <!-- 3. Najnovije -->
       <section class="screen latest" id="novo">
         <h2>Najnovije u ponudi</h2>
         <div id="latest"></div>
       </section>
 
-      <!-- 3. Kategorije (pravi JS) -->
+      <!-- 4. Kategorije (pravi JS) -->
       <div id="cats"></div>
     </div>
 
@@ -61,7 +68,6 @@
 
   <!-- Društvene mreže: uvek na istom mestu -->
   <aside class="social" aria-label="Društvene mreže">
-    <p>Novi buketi svake nedelje na našim mrežama</p>
     <a data-net="instagram" href="#" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
       <span>Instagram</span>
@@ -75,6 +81,12 @@
       <span>Facebook</span>
     </a>
   </aside>
+
+  <!-- Mali meni sa strane (telefon) -->
+  <div class="sidemenu" id="sidemenu">
+    <button class="sm-handle" id="smHandle" aria-label="Meni sekcija" aria-expanded="false"><span aria-hidden="true">&#8249;</span></button>
+    <nav class="sm-panel" id="smPanel" aria-label="Sekcije"></nav>
+  </div>
 
   <!-- Prozor buketa -->
   <dialog class="pm" id="pm">
@@ -110,36 +122,12 @@
         <textarea id="address" rows="2"></textarea>
       </label>
       <p class="total">Ukupno: <strong id="cartTotal"></strong></p>
+      <p class="cart-hint">Porudžbinu šalješ preko Instagrama: kopiramo je i otvaramo poruke, ti samo nalepiš i pošalješ.</p>
       <button class="btn block" id="sendIg">Pošalji porudžbinu na Instagram</button>
-      <button class="btn ghost block" id="sendWa">Pošalji porudžbinu na WhatsApp</button>
     </div>
   </aside>
 
-  <!-- Porudžbina za Instagram -->
-  <dialog class="pm od" id="od">
-    <button class="x" id="odClose" aria-label="Zatvori">&times;</button>
-    <h2>Porudžbina je kopirana</h2>
-    <p id="odState"></p>
-    <ol class="od-steps simple">
-      <li>U Instagramu pritisni polje za poruku.</li>
-      <li>Izaberi <strong>Nalepi</strong> (Paste).</li>
-      <li>Pritisni <strong>Pošalji</strong>. (Ako je poruka već upisana, preskoči prva dva koraka.)</li>
-    </ol>
-    <div class="od-row">
-      <a class="btn" id="odOpen" href="#" target="_blank" rel="noopener">Otvori Instagram poruke</a>
-      <button class="btn ghost" id="odCopyText">Kopiraj tekst</button>
-    </div>
-    <details class="od-more" id="odImgStep" hidden>
-      <summary>Dodaj i sliku porudžbine (nije obavezno)</summary>
-      <img id="odImg" alt="Slika porudžbine">
-      <span class="od-row">
-        <button class="btn ghost" id="odCopyImg">Kopiraj sliku</button>
-        <button class="btn ghost" id="odSaveImg">Sačuvaj sliku</button>
-      </span>
-    </details>
-  </dialog>
-
-  <script src="data.js"></script>
-  <script src="script.js"></script>
+  <script src="data.js?v=12"></script>
+  <script src="script.js?v=12"></script>
 </body>
 </html>

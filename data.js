@@ -9,17 +9,32 @@ const CONFIG = {
     'Novi brend u svetu plišanih cvetova!',
     'Ručno rađeni, unikatni buketi',
     'Slanje na teritoriji Srbije! 🌷'
+     
   ],
-  place: 'Mladenovac, Srbija',              // ZAMENI: tekst koji piše ispod priče
-  mapQuery: 'Mladenovac, Srbija',           // ZAMENI: grad ili tačna adresa za Google mape
-  whatsapp: '',              // ZAMENI: broj za porudžbine, bez + i bez razmaka
+  place: 'Beograd, Mladenovac, Srbija',              // ZAMENI: tekst koji piše ispod priče
+  mapQuery: 'Beograd, Mladenovac, Srbija',           // ZAMENI: grad ili tačna adresa za Google mape
   currency: 'RSD',
+  guide: {                               // ZAMENI svojim tekstovima (odeljak "Nega i održavanje")
+    aboutTitle: 'Šta su plišani buketi',
+    about: [
+      'Plišani buketi su cvetovi i aranžmani napravljeni od mekanog pliša umesto od pravog cveća. Ne venu, nemaju polen i ostaju lepi godinama, pa su poklon koji se čuva.',
+      'Svaki buket se slaže ručno, kao pravi, sa papirom, mašnom i čestitkom, za rođendane, godišnjice, diplomiranja i rođenja beba.'
+    ],
+    careTitle: 'Kako se održavaju',
+    care: [
+      'Čuvaj ga na suvom, daleko od vlage i direktne sunčeve svetlosti, da boje ne izbledi.',
+      'Prašinu skidaj mekom četkicom ili lepljivom trakom za odeću, laganim pokretima.',
+      'Ne pere se u mašini. Mrlju tretiraj blago vlažnom krpom i malo blagog sapuna, pa ostavi da se osuši na vazduhu.',
+      'Ako se pliš spljošti, lagano ga razčešljaj mekom četkicom da se vrati oblik.',
+      'Drži ga podalje od kućnih ljubimaca i male dece, zbog sitnih ukrasa.'
+    ]
+  },
   sheetCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT0DeAoKu7c1dvc9O7EBKgteKqSt7AmV7xsUj8Fi0OJo43XmPHrUYpZ6tgB2PpO9BWa6mOGJxVPknOQ/pub?gid=0&single=true&output=csv',                       // ZALEPI link iz Google tabele (File > Share > Publish to web > CSV)
   adminApiUrl: 'https://script.google.com/macros/s/AKfycbxqZRnG2whKSgDQfD3_aKeD1OiiTLq7DZttMQj7EOSuI4wvZ61vz6BfegmFTtzruk9dVQ/exec',                       // ZALEPI link skripte za admin.html (vidi apps-script.gs)
   social: {
     instagram: 'https://www.instagram.com/elunira.flowers/',
     tiktok: 'https://www.tiktok.com/@elunira.flowers',
-    facebook: 'https://www.facebook.com/people/Elunira-Flowers/61587164017154/'
+    facebook: 'https://www.facebook.com/people/Elunira-Flowers/61587164017154/#'
   },
   brandColors: { p1: '#c93a4d', p2: '#9e2438' } // boje početka stranice
 };
@@ -42,12 +57,4 @@ const CATEGORIES = [
 // Primer buketa, prikazuje se dok ne uneseš sheetCsvUrl.
 // Što je niže na spisku, to je buket noviji.
 const SAMPLE_PRODUCTS = [
-  { cat: 'veliki', name: 'Crvene ruže sa medvedom', price: 5490, desc: '25 plišanih ruža i medved u sredini, upakovano u papir sa mašnom.', images: ['images/veliki/1.jpg', 'images/veliki/1b.jpg'] },
-  { cat: 'veliki', name: 'Roze mešavina', price: 6290, desc: 'Ruže, božuri i tulipani u nežnim bojama.', images: ['images/veliki/2.jpg'] },
-  { cat: 'srednji', name: 'Roze tulipani', price: 3290, desc: '15 tulipana sa mašnom. Idealno za rođendan.', images: ['images/srednji/1.jpg'] },
-  { cat: 'srednji', name: 'Diplomski buket', price: 3890, desc: 'Buket sa kapom i diplomom.', images: ['images/srednji/2.jpg', 'images/srednji/2b.jpg'] },
-  { cat: 'mali', name: 'Mini iznenađenje', price: 1790, desc: 'Mali buket koji staje u šaku.', images: ['images/mali/1.jpg'] },
-  { cat: 'mali', name: 'Beba buket', price: 2290, desc: 'Pastelne boje i mali zeka.', images: ['images/mali/2.jpg'] },
-  { cat: 'cvetovi', name: 'Crvena ruža', price: 590, desc: 'Jedna plišana ruža na dugačkoj dršci.', images: ['images/cvetovi/1.jpg'] },
-  { cat: 'cvetovi', name: 'Sunčokret', price: 650, desc: 'Veliki plišani sunčokret.', images: ['images/cvetovi/2.jpg'] }
 ];

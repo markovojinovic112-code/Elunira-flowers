@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Upravljanje buketima</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <main class="wrap">
+
+    <section class="card" id="login">
+      <h1>Prijava za vlasnike</h1>
+      <label>Lozinka
+        <input type="password" id="pw" autocomplete="current-password">
+      </label>
+      <button class="btn" id="loginBtn">Uđi</button>
+      <p class="msg" id="loginMsg" role="status"></p>
+    </section>
+
+    <div id="app" hidden>
+      <header class="top">
+        <h1>Novi buket</h1>
+        <div>
+          <a href="index.html" target="_blank" rel="noopener">Pogledaj sajt</a>
+          <button class="link" id="logout">Odjavi se</button>
+        </div>
+      </header>
+
+      <section class="card">
+        <form id="form">
+          <label>Kategorija
+            <select id="cat" required></select>
+          </label>
+          <label>Naziv (nije obavezno)
+            <input id="name" autocomplete="off">
+          </label>
+          <label>Cena u dinarima
+            <input id="price" inputmode="numeric" autocomplete="off" required>
+          </label>
+          <label>Opis
+            <textarea id="desc" rows="4"></textarea>
+          </label>
+
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="Dodaj slike">
+            Prevuci slike ovde, pritisni da ih izabereš, ili nalepi sliku (Ctrl+V).<br>
+            <small>Do 4 slike. Prva je glavna.</small>
+            <input type="file" id="file" accept="image/*" multiple hidden>
+          </div>
+          <div class="previews" id="previews"></div>
+
+          <button class="btn" id="submit">Objavi na sajt</button>
+          <p class="msg" id="msg" role="status"></p>
+        </form>
+      </section>
+
+      <h2>Poslednje dodato</h2>
+      <div class="list" id="list"></div>
+    </div>
+
+  </main>
+  <script src="data.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

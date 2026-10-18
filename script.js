@@ -16,6 +16,7 @@ try { cart = JSON.parse(localStorage.getItem('mb-cart') || '[]'); } catch (e) { 
 const title = (p) => p.name || catById[p.cat].name;
 const imgTag = (src, alt = '') => `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" onerror="this.remove()">`;
 const priceText = (p) => (p.price ? fmt(p.price) : 'Cena na upit');
+const absUrl = (u) => { try { return new URL(u, location.href).href; } catch (e) { return u; } };
 function flash(btn, text = 'Dodato ✓') {
   if (btn.dataset.busy) return;
   const old = btn.textContent;
@@ -58,13 +59,17 @@ function rowsToProducts(rows) {
   if (!rows.length) return [];
   const head = rows[0].map((h) => norm(h).replace(/\s/g, ''));
   const col = (n) => head.indexOf(n);
-  const iC = col('kategorija'), iN = col('naziv'), iP = col('cena'), iD = col('opis'), iS = col('sakrij');
+  const iC = col('kategorija'), iN = col('naziv'), iP = col('cena'), iD = col('opis'), iS = col('sakrij'), iK = col('kod');
   const imgCols = head.map((h, i) => (/^slika/.test(h) ? i : -1)).filter((i) => i >= 0);
+  const seq = {};
   return rows.slice(1).map((r) => {
     const c = matchCat(r[iC]);
+    if (!c) return null;
+    seq[c.id] = (seq[c.id] || 0) + 1; // šifra se broji i za sakrivene bukete, da se ne pomeri
     const images = imgCols.map((i) => fixImg((r[i] || '').trim())).filter(Boolean);
-    if (!c || !images.length || norm(r[iS]) === 'da') return null;
-    return { cat: c.id, name: (r[iN] || '').trim(), price: parsePrice(r[iP]), desc: (r[iD] || '').trim(), images };
+    if (!images.length || norm(r[iS]) === 'da') return null;
+    const code = ((iK >= 0 && r[iK]) || '').trim() || c.id[0].toUpperCase() + seq[c.id];
+    return { cat: c.id, code, name: (r[iN] || '').trim(), price: parsePrice(r[iP]), desc: (r[iD] || '').trim(), images };
   }).filter(Boolean);
 }
 
@@ -83,7 +88,9 @@ async function loadProducts() {
 
 function indexProducts(list) {
   // novi buketi su na dnu tabele, a na sajtu se prikazuju prvi
-  products = list.slice().reverse().map((p, i) => ({ ...p, id: i, key: p.cat + '|' + (p.name || p.images[0]) }));
+  const seq = {};
+  const coded = list.map((p) => { seq[p.cat] = (seq[p.cat] || 0) + 1; return { ...p, code: p.code || p.cat[0].toUpperCase() + seq[p.cat] }; });
+  products = coded.slice().reverse().map((p, i) => ({ ...p, id: i, key: p.cat + '|' + (p.name || p.images[0]) }));
   byCat = Object.fromEntries(CATEGORIES.map((c) => [c.id, products.filter((p) => p.cat === c.id)]));
   byKey = Object.fromEntries(products.map((p) => [p.key, p]));
 }
@@ -156,7 +163,7 @@ function updateCat(id) {
   name.textContent = p.name; name.hidden = !p.name;
   $('.price', sec).textContent = priceText(p);
   $('.pdesc', sec).textContent = p.desc;
-  $('.pcount', sec).textContent = list.length > 1 ? `${state[id] + 1} / ${list.length}` : '';
+  $('.pcount', sec).textContent = `Kod: ${p.code}` + (list.length > 1 ? ` · ${state[id] + 1} / ${list.length}` : '');
 }
 function step(id, d) { const n = byCat[id].length; state[id] = (state[id] + d + n) % n; updateCat(id); }
 
@@ -192,6 +199,7 @@ function openCatalog(c) {
       <span class="thumb"><span class="ph">${c.emoji}</span>${imgTag(p.images[0], title(p))}</span>
       ${p.name ? `<strong>${esc(p.name)}</strong>` : ''}
       <span class="cprice">${priceText(p)}</span>
+      <span class="ccode">Kod: ${esc(p.code)}</span>
     </button>`).join('') : '<p class="empty">Uskoro stižu novi buketi iz ove kategorije. Prati nas na mrežama.</p>';
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
@@ -210,6 +218,7 @@ function openProduct(id) {
     ? p.images.map((s, i) => `<button data-src="${esc(s)}" aria-label="Slika ${i + 1}">${imgTag(s)}</button>`).join('') : '';
   $('#pmName').textContent = title(p);
   $('#pmPrice').textContent = priceText(p);
+  $('#pmCode').textContent = 'Kod: ' + p.code;
   $('#pmDesc').textContent = p.desc;
   $('#pmAdd').dataset.key = p.key;
   $('#pm').showModal();
@@ -239,7 +248,7 @@ function renderCart() {
     <div class="line">
       <div class="line-img"><span class="ph">${catById[p.cat].emoji}</span>${imgTag(p.images[0])}</div>
       <div class="line-info">
-        <strong>${esc(title(p))}</strong><span>${priceText(p)}</span>
+        <strong>${esc(title(p))}</strong><span>${priceText(p)} · ${esc(p.code)}</span>
         <div class="qty">
           <button data-d="-1" data-key="${esc(p.key)}" aria-label="Smanji količinu">−</button>
           <span>${qty}</span>
@@ -266,7 +275,7 @@ $('#overlay').addEventListener('click', () => toggleCart(false));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleCart(false); });
 
 function orderText() {
-  const lines = cartLines().map(({ p, qty }) => `• ${title(p)} x${qty} = ${fmt(p.price * qty)}`);
+  const lines = cartLines().map(({ p, qty }) => `• ${p.code} - ${title(p)} x${qty} = ${fmt(p.price * qty)}\n  Slika: ${absUrl(p.images[0])}`);
   let t = `Zdravo! Želim da poručim:\n${lines.join('\n')}\n\nUkupno: ${fmt(total())}`;
   const note = $('#note').value.trim();
   if (note) t += `\nNapomena: ${note}`;
@@ -340,7 +349,7 @@ async function buildOrderBlob(withPhotos) {
     }
     ctx.restore();
     ctx.fillStyle = '#4a3a35'; ctx.font = `600 20px ${F}`;
-    ctx.fillText(fitText(ctx, title(p), W - 2 * pad - 90 - 150), pad + 90, y + 30);
+    ctx.fillText(fitText(ctx, p.code + ' · ' + title(p), W - 2 * pad - 90 - 150), pad + 90, y + 30);
     ctx.fillStyle = '#8a7770'; ctx.font = `400 18px ${F}`;
     ctx.fillText(`${qty} x ${fmt(p.price)}`, pad + 90, y + 58);
     ctx.textAlign = 'right'; ctx.fillStyle = '#c94f45'; ctx.font = `700 20px ${F}`;
@@ -365,41 +374,25 @@ async function makeOrderBlob() {
   try { return await buildOrderBlob(false); } catch (e) { return null; }
 }
 
-// Slika i tekst idu u memoriju zajedno. Instagram sam bira šta će nalepiti,
-// zato prozor ima i dugmad za kopiranje posebno.
-async function copyBoth(text, blobP) {
-  try {
-    if (!window.ClipboardItem) throw new Error('nema ClipboardItem');
-    const imgP = blobP.then((b) => { if (!b) throw new Error('nema slike'); return b; });
-    await navigator.clipboard.write([new ClipboardItem({
-      'text/plain': new Blob([text], { type: 'text/plain' }),
-      'image/png': imgP
-    })]);
-    return 'both';
-  } catch (e) {
-    return (await copyText(text)) ? 'text' : 'none';
-  }
-}
-
-$('#sendIg').addEventListener('click', async () => {
+$('#sendIg').addEventListener('click', () => {
   if (!checkReady()) return;
   const text = orderText();
+  const copied = copyText(text); // kopiranje počinje odmah, u okviru klika
   const m = CONFIG.social.instagram.match(/instagram\.com\/([\w.]+)/);
   const url = m ? `https://ig.me/m/${m[1]}?text=${encodeURIComponent(text)}` : 'https://www.instagram.com/direct/inbox/';
   $('#odOpen').href = url;
-  $('#odImgStep').hidden = true;
-  $('#odState').textContent = 'Pripremam porudžbinu...';
-  $('#od').showModal();
-
-  const blobP = makeOrderBlob();
-  const how = await copyBoth(text, blobP); // pokrenuto odmah u okviru klika
-  orderBlob = await blobP;
-  if (orderBlob) { $('#odImg').src = URL.createObjectURL(orderBlob); $('#odImgStep').hidden = false; }
-  $('#odState').textContent = how === 'both' ? 'Kopirani su slika i tekst porudžbine.'
-    : how === 'text' ? 'Kopiran je tekst porudžbine.'
-    : 'Kopiranje nije uspelo. Pritisni dugmad ispod.';
   const w = window.open(url, '_blank');
   if (w) w.opener = null;
+  $('#odState').textContent = 'Kopiram...';
+  copied.then((ok) => {
+    $('#odState').textContent = ok ? 'Cela porudžbina je kopirana, sa šifrom i linkom slike svakog buketa.' : 'Kopiranje nije uspelo. Pritisni "Kopiraj tekst".';
+  });
+  $('#odImgStep').hidden = true;
+  $('#od').showModal();
+  makeOrderBlob().then((b) => {
+    orderBlob = b;
+    if (b) { $('#odImg').src = URL.createObjectURL(b); $('#odImgStep').hidden = false; }
+  });
 });
 $('#odCopyText').addEventListener('click', async (e) => {
   const t = orderText();
@@ -412,12 +405,15 @@ $('#odCopyImg').addEventListener('click', async (e) => {
   } catch (err) { alert('Ovaj uređaj ne dozvoljava kopiranje slike. Pritisni "Sačuvaj / podeli sliku".'); }
 });
 $('#odSaveImg').addEventListener('click', async () => {
+  if (!orderBlob) return alert('Slika porudžbine nije napravljena.');
   const file = new File([orderBlob], 'porudzbina.png', { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+  const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file] }); return; } catch (err) { if (err.name === 'AbortError') return; }
   }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(orderBlob); a.download = 'porudzbina.png'; a.click();
+  a.href = URL.createObjectURL(orderBlob); a.download = 'porudzbina.png';
+  document.body.appendChild(a); a.click(); a.remove();
 });
 $('#odClose').addEventListener('click', () => $('#od').close());
 $('#od').addEventListener('click', (e) => { if (e.target === $('#od')) $('#od').close(); });

@@ -169,3 +169,18 @@ textarea { font: inherit; font-weight: 400; color: var(--dark); border: 0; borde
   .frame.swap { animation: none; }
   :root { transition: none; }
 }
+
+/* Prozor porudžbine za Instagram */
+.od h2 { font-size: 1.5rem; margin-bottom: .4rem; padding-right: 2.5rem; }
+.od > p { opacity: .9; }
+.od-steps { list-style: none; display: grid; gap: 1.3rem; margin-top: 1.2rem; }
+.od-steps li { display: grid; gap: .6rem; justify-items: start; }
+.od-steps .btn { padding: .6rem 1.2rem; }
+.od-steps small { opacity: .85; }
+.od-row { display: flex; flex-wrap: wrap; gap: .6rem; }
+#odImg { max-width: min(240px, 100%); border-radius: 12px; background: #fff; }
+.od-steps.simple { list-style: decimal; padding-left: 1.3rem; gap: .4rem; margin: 1rem 0; }
+.od-more { margin-top: 1.2rem; display: grid; gap: .6rem; }
+.od-more summary { cursor: pointer; font-weight: 600; font-size: .92rem; }
+.od-more img { margin: .6rem 0; }
+.ccode { padding: 0 .3rem .2rem; font-size: .8rem; opacity: .75; }

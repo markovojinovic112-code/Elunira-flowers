@@ -3,13 +3,21 @@
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const root = document.documentElement;
+if (/[?&]debug/.test(location.search)) {
+  window.addEventListener('error', (e) => {
+    const b = document.createElement('div');
+    b.style.cssText = 'position:fixed;top:8rem;left:1rem;right:1rem;z-index:50;background:#a00;color:#fff;padding:.7rem 1rem;border-radius:12px;font-size:.85rem';
+    b.textContent = 'Greška u kodu: ' + e.message + ' (' + String(e.filename).split('/').pop() + ':' + e.lineno + ')';
+    document.body.appendChild(b);
+  });
+}
 const fmt = (n) => Number(n).toLocaleString('sr-RS') + ' ' + CONFIG.currency;
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const norm = (s) => String(s || '').toLowerCase().replace(/đ/g, 'dj').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 const catById = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
 
 let products = [], byCat = {}, byKey = {};
-let cart = [], pending = null, lastCat = null;
+let cart = [], pending = null, lastCat = null, orderDone = false, igUrl = '';
 const state = {};
 try { cart = JSON.parse(localStorage.getItem('mb-cart') || '[]'); } catch (e) { cart = []; }
 
@@ -73,15 +81,24 @@ function rowsToProducts(rows) {
   }).filter(Boolean);
 }
 
+let loadInfo = '';
 async function loadProducts() {
-  if (!CONFIG.sheetCsvUrl) return SAMPLE_PRODUCTS;
+  if (!CONFIG.sheetCsvUrl) {
+    loadInfo = 'sheetCsvUrl je prazan u data.js, zato se prikazuju primeri buketa.';
+    return SAMPLE_PRODUCTS;
+  }
   try {
     const res = await fetch(CONFIG.sheetCsvUrl, { cache: 'no-store' });
-    if (!res.ok) throw new Error(res.status);
-    const list = rowsToProducts(parseCSV(await res.text()));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const list = rowsToProducts(rows);
+    loadInfo = `tabela je učitana: ${Math.max(rows.length - 1, 0)} redova, prikazano buketa: ${list.length}.`
+      + (/^\s*</.test(text) ? ' PAŽNJA: link nije CSV nego web stranica.' : '');
     try { localStorage.setItem('mb-cache', JSON.stringify(list)); } catch (e) {}
     return list;
   } catch (e) {
+    loadInfo = 'greška pri učitavanju tabele (' + e.message + '), prikazuje se sačuvana kopija ako postoji.';
     try { return JSON.parse(localStorage.getItem('mb-cache') || '[]'); } catch (e2) { return []; }
   }
 }
@@ -103,9 +120,18 @@ function renderBrand() {
   $('#watermark').textContent = CONFIG.brand;
   $('#aboutText').innerHTML = CONFIG.about.map((t) => `<p>${esc(t)}</p>`).join('');
   $('#placeText').textContent = CONFIG.place;
+  const g = CONFIG.guide, gs = $('#nega');
+  if (g && gs) {
+    $('#gTitle1').textContent = g.aboutTitle;
+    $('#gAbout').innerHTML = (g.about || []).map((t) => `<p>${esc(t)}</p>`).join('');
+    $('#gTitle2').textContent = g.careTitle;
+    $('#gCare').innerHTML = (g.care || []).map((t) => `<li>${esc(t)}</li>`).join('');
+  } else if (gs) gs.hidden = true;
   $$('.social a[data-net]').forEach((a) => { a.href = CONFIG.social[a.dataset.net]; });
-  $('#links').innerHTML = [['novo', 'Najnovije'], ...CATEGORIES.map((c) => ['sec-' + c.id, c.name])]
+  const navHtml = [...(CONFIG.guide ? [['nega', 'O buketima']] : []), ['novo', 'Najnovije'], ...CATEGORIES.map((c) => ['sec-' + c.id, c.name])]
     .map(([id, t]) => `<button data-go="${id}">${esc(t)}</button>`).join('');
+  $('#links').innerHTML = navHtml;
+  if ($('#smPanel')) $('#smPanel').innerHTML = navHtml;
 }
 
 $('#mapBtn').addEventListener('click', () => {
@@ -233,6 +259,7 @@ const cartLines = () => cart.map((i) => ({ p: byKey[i.key], qty: i.qty })).filte
 const total = () => cartLines().reduce((s, l) => s + l.p.price * l.qty, 0);
 
 function addToCart(key) {
+  orderDone = false;
   const it = cart.find((i) => i.key === key);
   if (it) it.qty++; else cart.push({ key, qty: 1 });
   renderCart();
@@ -256,7 +283,7 @@ function renderCart() {
         </div>
       </div>
       <button class="remove" data-rm="${esc(p.key)}">Ukloni</button>
-    </div>`).join('') : '<p class="empty">Korpa je prazna.</p>';
+    </div>`).join('') : orderDone ? `<p class="empty ok">Porudžbina je kopirana. Nalepi je u Instagram poruku i pritisni Pošalji.</p><a class="btn block" href="${esc(igUrl)}" target="_blank" rel="noopener">Otvori Instagram poruke</a>` : '<p class="empty">Korpa je prazna.</p>';
 }
 $('#cartItems').addEventListener('click', (e) => {
   const q = e.target.closest('[data-d]'), r = e.target.closest('[data-rm]');
@@ -286,140 +313,34 @@ function checkReady() {
   $('#address').focus(); $('#address').placeholder = 'Upiši ime, adresu i telefon';
   return false;
 }
-$('#sendWa').addEventListener('click', () => {
-  if (checkReady()) window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(orderText())}`, '_blank', 'noopener');
-});
 // ---------- Porudžbina preko Instagrama ----------
-let orderBlob = null;
-
 async function copyText(t) {
   try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; }
 }
-function loadImg(src) {
-  return new Promise((res) => {
-    const i = new Image(); i.crossOrigin = 'anonymous';
-    i.onload = () => res(i); i.onerror = () => res(null); i.src = src;
-  });
-}
-function wrapText(ctx, text, maxW) {
-  const out = []; let line = '';
-  for (const w of text.split(/\s+/)) {
-    const t = line ? line + ' ' + w : w;
-    if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t;
-  }
-  if (line) out.push(line);
-  return out;
-}
-function fitText(ctx, text, maxW) {
-  while (text.length > 1 && ctx.measureText(text).width > maxW) text = text.slice(0, -2) + '…';
-  return text;
-}
-
-async function buildOrderBlob(withPhotos) {
-  const lines = cartLines();
-  const imgs = await Promise.all(lines.map((l) => (withPhotos ? loadImg(l.p.images[0]) : null)));
-  const W = 720, pad = 32, rowH = 92, F = 'Montserrat, system-ui, sans-serif';
-  const note = $('#note').value.trim(), addr = $('#address').value.trim();
-  const m = document.createElement('canvas').getContext('2d');
-  m.font = `500 20px ${F}`;
-  const extra = [];
-  if (note) extra.push(['Napomena', wrapText(m, note, W - 2 * pad)]);
-  extra.push(['Dostava', wrapText(m, addr, W - 2 * pad)]);
-  const extraH = extra.reduce((h, [, ls]) => h + 34 + ls.length * 28 + 14, 0);
-  const H = pad + 56 + lines.length * rowH + 70 + extraH + pad;
-
-  const c = document.createElement('canvas');
-  c.width = W * 2; c.height = H * 2;
-  const ctx = c.getContext('2d'); ctx.scale(2, 2);
-  ctx.fillStyle = '#fff8f3'; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#4a3a35'; ctx.font = `700 28px ${F}`;
-  ctx.fillText(fitText(ctx, CONFIG.brand + ' | Porudžbina', W - 2 * pad), pad, pad + 28);
-
-  let y = pad + 56;
-  lines.forEach(({ p, qty }, i) => {
-    ctx.save();
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(pad, y, 72, 72, 14); else ctx.rect(pad, y, 72, 72);
-    ctx.clip();
-    ctx.fillStyle = '#fdebe4'; ctx.fillRect(pad, y, 72, 72);
-    const im = imgs[i];
-    if (im) {
-      const s = Math.max(72 / im.width, 72 / im.height), w = im.width * s, h = im.height * s;
-      ctx.drawImage(im, pad + (72 - w) / 2, y + (72 - h) / 2, w, h);
-    }
-    ctx.restore();
-    ctx.fillStyle = '#4a3a35'; ctx.font = `600 20px ${F}`;
-    ctx.fillText(fitText(ctx, p.code + ' · ' + title(p), W - 2 * pad - 90 - 150), pad + 90, y + 30);
-    ctx.fillStyle = '#8a7770'; ctx.font = `400 18px ${F}`;
-    ctx.fillText(`${qty} x ${fmt(p.price)}`, pad + 90, y + 58);
-    ctx.textAlign = 'right'; ctx.fillStyle = '#c94f45'; ctx.font = `700 20px ${F}`;
-    ctx.fillText(fmt(p.price * qty), W - pad, y + 42); ctx.textAlign = 'left';
-    y += rowH;
-  });
-
-  ctx.fillStyle = '#fdebe4'; ctx.fillRect(pad, y, W - 2 * pad, 2);
-  ctx.textAlign = 'right'; ctx.fillStyle = '#4a3a35'; ctx.font = `700 26px ${F}`;
-  ctx.fillText('Ukupno: ' + fmt(total()), W - pad, y + 44); ctx.textAlign = 'left';
-  y += 70;
-  extra.forEach(([label, ls]) => {
-    ctx.fillStyle = '#c94f45'; ctx.font = `700 18px ${F}`; ctx.fillText(label, pad, y + 18);
-    ctx.fillStyle = '#4a3a35'; ctx.font = `500 20px ${F}`;
-    ls.forEach((l, k) => ctx.fillText(l, pad, y + 46 + k * 28));
-    y += 34 + ls.length * 28 + 14;
-  });
-  return new Promise((res) => c.toBlob(res, 'image/png'));
-}
-async function makeOrderBlob() {
-  try { return await buildOrderBlob(true); } catch (e) { /* slike sa drugog sajta blokirane */ }
-  try { return await buildOrderBlob(false); } catch (e) { return null; }
-}
-
 $('#sendIg').addEventListener('click', () => {
   if (!checkReady()) return;
   const text = orderText();
   const copied = copyText(text); // kopiranje počinje odmah, u okviru klika
   const m = CONFIG.social.instagram.match(/instagram\.com\/([\w.]+)/);
-  const url = m ? `https://ig.me/m/${m[1]}?text=${encodeURIComponent(text)}` : 'https://www.instagram.com/direct/inbox/';
-  $('#odOpen').href = url;
-  const w = window.open(url, '_blank');
+  igUrl = m ? `https://ig.me/m/${m[1]}?text=${encodeURIComponent(text)}` : 'https://www.instagram.com/direct/inbox/';
+  const w = window.open(igUrl, '_blank');
   if (w) w.opener = null;
-  $('#odState').textContent = 'Kopiram...';
   copied.then((ok) => {
-    $('#odState').textContent = ok ? 'Cela porudžbina je kopirana, sa šifrom i linkom slike svakog buketa.' : 'Kopiranje nije uspelo. Pritisni "Kopiraj tekst".';
-  });
-  $('#odImgStep').hidden = true;
-  $('#od').showModal();
-  makeOrderBlob().then((b) => {
-    orderBlob = b;
-    if (b) { $('#odImg').src = URL.createObjectURL(b); $('#odImgStep').hidden = false; }
+    if (!ok) window.prompt('Kopiraj porudžbinu i nalepi je u Instagram poruku:', text);
+    cart = []; orderDone = true;               // korpa se prazni kad je porudžbina kopirana
+    $('#note').value = ''; $('#address').value = '';
+    renderCart();
   });
 });
-$('#odCopyText').addEventListener('click', async (e) => {
-  const t = orderText();
-  if (await copyText(t)) flash(e.currentTarget, 'Kopirano ✓'); else window.prompt('Kopiraj porudžbinu:', t);
-});
-$('#odCopyImg').addEventListener('click', async (e) => {
-  try {
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': orderBlob })]);
-    flash(e.currentTarget, 'Kopirano ✓');
-  } catch (err) { alert('Ovaj uređaj ne dozvoljava kopiranje slike. Pritisni "Sačuvaj / podeli sliku".'); }
-});
-$('#odSaveImg').addEventListener('click', async () => {
-  if (!orderBlob) return alert('Slika porudžbine nije napravljena.');
-  const file = new File([orderBlob], 'porudzbina.png', { type: 'image/png' });
-  const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file] }); return; } catch (err) { if (err.name === 'AbortError') return; }
-  }
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(orderBlob); a.download = 'porudzbina.png';
-  document.body.appendChild(a); a.click(); a.remove();
-});
-$('#odClose').addEventListener('click', () => $('#od').close());
-$('#od').addEventListener('click', (e) => { if (e.target === $('#od')) $('#od').close(); });
 
 // ---------- Navigacija i rutiranje ----------
-function markLinks(id) { $$('#links button').forEach((b) => b.setAttribute('aria-current', String(b.dataset.go === id))); }
+function markLinks(id) {
+  $$('#links button, #smPanel button').forEach((b) => b.setAttribute('aria-current', String(b.dataset.go === id)));
+  const box = $('#links'), cur = $('#links [aria-current="true"]');
+  if (cur && box.scrollWidth > box.clientWidth) { // aktivno dugme ostaje na vidiku
+    box.scrollTo({ left: cur.offsetLeft - (box.clientWidth - cur.offsetWidth) / 2, behavior: 'smooth' });
+  }
+}
 
 function flushScroll(smooth) {
   const id = pending || (lastCat ? 'sec-' + lastCat : null);
@@ -443,6 +364,22 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
+// ---------- Mali meni sa strane (telefon) ----------
+if ($('#sidemenu')) {
+  const sm = $('#sidemenu');
+  let smY = 0;
+  const toggleMenu = (open) => {
+    sm.classList.toggle('open', open);
+    $('#smHandle').setAttribute('aria-expanded', String(open));
+    if (open) smY = window.scrollY;
+  };
+  $('#smHandle').addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(!sm.classList.contains('open')); });
+  // zatvara se kad izabereš sekciju, dodirneš van menija ili skroluješ
+  document.addEventListener('click', (e) => { if (!e.target.closest('#sidemenu') || e.target.closest('[data-go]')) toggleMenu(false); });
+  window.addEventListener('scroll', () => { if (sm.classList.contains('open') && Math.abs(window.scrollY - smY) > 40) toggleMenu(false); }, { passive: true });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleMenu(false); });
+}
+
 // boja i naziv u pozadini prate sekciju na sredini ekrana
 const io = new IntersectionObserver((entries) => {
   entries.forEach((e) => {
@@ -459,6 +396,12 @@ async function init() {
   renderBrand();
   setTheme(CONFIG.brandColors);
   indexProducts(await loadProducts());
+  if (/[?&]debug/.test(location.search)) { // otvori sajt sa ?debug na kraju adrese
+    const b = document.createElement('div');
+    b.style.cssText = 'position:fixed;top:4.5rem;left:1rem;right:1rem;z-index:50;background:#000;color:#fff;padding:.7rem 1rem;border-radius:12px;font-size:.85rem';
+    b.textContent = 'Dijagnostika: ' + loadInfo;
+    document.body.appendChild(b);
+  }
   renderLatest(); renderCats(); renderCart();
   $$('#page .screen').forEach((el) => io.observe(el));
   route();

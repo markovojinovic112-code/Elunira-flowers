@@ -365,23 +365,41 @@ async function makeOrderBlob() {
   try { return await buildOrderBlob(false); } catch (e) { return null; }
 }
 
-$('#sendIg').addEventListener('click', () => {
+// Slika i tekst idu u memoriju zajedno. Instagram sam bira šta će nalepiti,
+// zato prozor ima i dugmad za kopiranje posebno.
+async function copyBoth(text, blobP) {
+  try {
+    if (!window.ClipboardItem) throw new Error('nema ClipboardItem');
+    const imgP = blobP.then((b) => { if (!b) throw new Error('nema slike'); return b; });
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/plain': new Blob([text], { type: 'text/plain' }),
+      'image/png': imgP
+    })]);
+    return 'both';
+  } catch (e) {
+    return (await copyText(text)) ? 'text' : 'none';
+  }
+}
+
+$('#sendIg').addEventListener('click', async () => {
   if (!checkReady()) return;
-  const copied = copyText(orderText()); // kopiranje počinje odmah, u okviru klika
+  const text = orderText();
   const m = CONFIG.social.instagram.match(/instagram\.com\/([\w.]+)/);
-  const url = m ? `https://ig.me/m/${m[1]}?text=${encodeURIComponent(orderText())}` : 'https://www.instagram.com/direct/inbox/';
+  const url = m ? `https://ig.me/m/${m[1]}?text=${encodeURIComponent(text)}` : 'https://www.instagram.com/direct/inbox/';
   $('#odOpen').href = url;
-  window.open(url, '_blank', 'noopener');
-  $('#odState').textContent = 'Kopiram...';
-  copied.then((ok) => {
-    $('#odState').textContent = ok ? 'Cela porudžbina je kopirana. Nalepi je u poruku.' : 'Kopiranje nije uspelo. Pritisni "Kopiraj ponovo".';
-  });
   $('#odImgStep').hidden = true;
+  $('#odState').textContent = 'Pripremam porudžbinu...';
   $('#od').showModal();
-  makeOrderBlob().then((b) => {
-    orderBlob = b;
-    if (b) { $('#odImg').src = URL.createObjectURL(b); $('#odImgStep').hidden = false; }
-  });
+
+  const blobP = makeOrderBlob();
+  const how = await copyBoth(text, blobP); // pokrenuto odmah u okviru klika
+  orderBlob = await blobP;
+  if (orderBlob) { $('#odImg').src = URL.createObjectURL(orderBlob); $('#odImgStep').hidden = false; }
+  $('#odState').textContent = how === 'both' ? 'Kopirani su slika i tekst porudžbine.'
+    : how === 'text' ? 'Kopiran je tekst porudžbine.'
+    : 'Kopiranje nije uspelo. Pritisni dugmad ispod.';
+  const w = window.open(url, '_blank');
+  if (w) w.opener = null;
 });
 $('#odCopyText').addEventListener('click', async (e) => {
   const t = orderText();

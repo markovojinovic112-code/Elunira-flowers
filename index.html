@@ -87,6 +87,7 @@
       <div class="pm-info">
         <h3 id="pmName"></h3>
         <p class="price" id="pmPrice"></p>
+        <p class="pcount" id="pmCode"></p>
         <p class="desc" id="pmDesc"></p>
         <button class="btn" id="pmAdd">Dodaj u korpu</button>
       </div>
@@ -117,24 +118,25 @@
   <!-- Porudžbina za Instagram -->
   <dialog class="pm od" id="od">
     <button class="x" id="odClose" aria-label="Zatvori">&times;</button>
-    <h2>Porudžbina je spremna</h2>
+    <h2>Porudžbina je kopirana</h2>
     <p id="odState"></p>
     <ol class="od-steps simple">
-      <li>Otvori Instagram poruke (otvara se samo, a ako ne, pritisni dugme ispod).</li>
-      <li>Pritisni polje za poruku, izaberi <strong>Nalepi</strong> (Paste) i pritisni <strong>Pošalji</strong>.</li>
-      <li>Ako se nalepila samo slika ili samo tekst, pritisni dugme za ono drugo ispod, pa opet <strong>Nalepi</strong> i <strong>Pošalji</strong>.</li>
+      <li>U Instagramu pritisni polje za poruku.</li>
+      <li>Izaberi <strong>Nalepi</strong> (Paste).</li>
+      <li>Pritisni <strong>Pošalji</strong>. (Ako je poruka već upisana, preskoči prva dva koraka.)</li>
     </ol>
     <div class="od-row">
       <a class="btn" id="odOpen" href="#" target="_blank" rel="noopener">Otvori Instagram poruke</a>
       <button class="btn ghost" id="odCopyText">Kopiraj tekst</button>
     </div>
-    <div class="od-more" id="odImgStep" hidden>
-      <img id="odImg" alt="Slika porudžbine sa buketima">
+    <details class="od-more" id="odImgStep" hidden>
+      <summary>Dodaj i sliku porudžbine (nije obavezno)</summary>
+      <img id="odImg" alt="Slika porudžbine">
       <span class="od-row">
         <button class="btn ghost" id="odCopyImg">Kopiraj sliku</button>
-        <button class="btn ghost" id="odSaveImg">Sačuvaj / podeli sliku</button>
+        <button class="btn ghost" id="odSaveImg">Sačuvaj sliku</button>
       </span>
-    </div>
+    </details>
   </dialog>
 
   <script src="data.js"></script>
